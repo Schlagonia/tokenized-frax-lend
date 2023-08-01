@@ -11,9 +11,11 @@ import {IFraxLend} from "./interfaces/IFraxLend.sol";
 contract FraxLend is BaseTokenizedStrategy {
     using SafeERC20 for ERC20;
 
-    IFraxLend public constant pair = IFraxLend(0x3835a58CA93Cdb5f912519ad366826aC9a752510);
+    IFraxLend public constant pair =
+        IFraxLend(0x3835a58CA93Cdb5f912519ad366826aC9a752510);
 
     uint256 public timeToUnlock;
+    bool public freezeTimeToUnlock;
 
     constructor(
         address _asset,
@@ -66,10 +68,15 @@ contract FraxLend is BaseTokenizedStrategy {
      * @param _amount, The amount of 'asset' to be freed.
      */
     function _freeFunds(uint256 _amount) internal override {
-        if(block.timestamp >= timeToUnlock) {
+        // Only proccess withdraws if we have unlocked the stratey
+        if (block.timestamp >= timeToUnlock) {
+            // Update exchance rate for conversion.
             pair.updateExchangeRate();
-            uint256 shares = pair.toAssetShares(_amount, false);
-            pair.redeem(shares, address(this), address(this));
+            pair.redeem(
+                pair.toAssetShares(_amount, false),
+                address(this),
+                address(this)
+            );
         } else {
             require(false, "Locked!");
         }
@@ -101,10 +108,12 @@ contract FraxLend is BaseTokenizedStrategy {
         internal
         override
         returns (uint256 _totalAssets)
-    {   
+    {
         // Acccrue interest
         pair.updateExchangeRate();
-        return ERC20(asset).balanceOf(address(this)) + pair.toAssetAmount(pair.balanceOf(address(this)), false);
+        return
+            ERC20(asset).balanceOf(address(this)) +
+            pair.toAssetAmount(pair.balanceOf(address(this)), false);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -129,10 +138,13 @@ contract FraxLend is BaseTokenizedStrategy {
      * @param . The address that is withdrawing from the strategy.
      * @return . The avialable amount that can be withdrawn in terms of `asset`
      */
-    function availableWithdrawLimit(
-        address _owner
-    ) public view override returns (uint256) {
-        if(block.timestamp >= timeToUnlock) {
+    function availableWithdrawLimit(address _owner)
+        public
+        view
+        override
+        returns (uint256)
+    {
+        if (block.timestamp >= timeToUnlock) {
             return super.availableWithdrawLimit(_owner);
         } else {
             return TokenizedStrategy.totalIdle();
@@ -165,5 +177,15 @@ contract FraxLend is BaseTokenizedStrategy {
         uint256 shares = pair.toAssetShares(_amount, false);
         pair.redeem(shares, address(this), address(this));
     }
-    
+
+    // Management can update the lock rate unless it has been frozen.
+    function setTimeToUnlock(uint256 _newTime) external onlyManagement {
+        require(!freezeTimeToUnlock, "Unlcok frozen");
+        timeToUnlock = _newTime;
+    }
+
+    // One way switch to freeze the unlock time.
+    function freeUnlokc() external onlyManagement {
+        freezeTimeToUnlock = true;
+    }
 }
