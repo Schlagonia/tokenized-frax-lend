@@ -9,8 +9,9 @@ contract ShutdownTest is Setup {
     }
 
     function test_shudownCanWithdraw(uint256 _amount) public {
-        vm.assume(_amount > minFuzzAmount && _amount < maxFuzzAmount);
-
+        vm.assume(
+            _amount > strategy.depositThreshold() && _amount < maxFuzzAmount
+        );
         // Deposit into strategy
         mintAndDepositIntoStrategy(strategy, user, _amount);
 

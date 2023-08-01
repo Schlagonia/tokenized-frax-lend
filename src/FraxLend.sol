@@ -14,7 +14,7 @@ contract FraxLend is BaseTokenizedStrategy {
     IFraxLend public constant pair =
         IFraxLend(0x3835a58CA93Cdb5f912519ad366826aC9a752510);
 
-    uint256 public depositThreshold = 500_000e18;
+    uint256 public constant depositThreshold = 500_000e18;
     bool public thresholdMet;
 
     uint256 public timeToUnlock;
@@ -50,7 +50,7 @@ contract FraxLend is BaseTokenizedStrategy {
         if (thresholdMet) {
             pair.deposit(_amount, address(this));
 
-        // Amount will include all idle funds if not deposited yet.
+            // Amount will include all idle funds if not deposited yet.
         } else if (_amount > depositThreshold) {
             thresholdMet = true;
             pair.deposit(_amount, address(this));
