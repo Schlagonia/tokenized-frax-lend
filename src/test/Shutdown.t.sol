@@ -25,7 +25,6 @@ contract ShutdownTest is Setup {
         vm.prank(management);
         strategy.shutdownStrategy();
 
-        // TODO: Implement logic so totalDebt is _amount and totalIdle = 0.
         checkStrategyTotals(strategy, _amount, _amount, 0);
         // Make sure we can still withdraw the full amount
         uint256 balanceBefore = asset.balanceOf(user);

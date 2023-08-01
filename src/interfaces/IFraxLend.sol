@@ -12,7 +12,7 @@ interface IFraxLend {
 
     function balanceOf(address) external view returns (uint256);
 
-    function updateExchangeRate() external;
+    function addInterest() external;
 
     /// @notice The ```toAssetAmount``` function converts a given number of shares to an asset amount
     /// @param _shares Shares of asset (fToken)

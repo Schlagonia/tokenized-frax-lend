@@ -82,7 +82,7 @@ contract FraxLend is BaseTokenizedStrategy {
         // Only proccess withdraws if we have unlocked the stratey
         if (block.timestamp >= timeToUnlock) {
             // Update exchance rate for conversion.
-            pair.updateExchangeRate();
+            pair.addInterest();
             pair.redeem(
                 pair.toAssetShares(_amount, false),
                 address(this),
@@ -121,7 +121,7 @@ contract FraxLend is BaseTokenizedStrategy {
         returns (uint256 _totalAssets)
     {
         // Acccrue interest
-        pair.updateExchangeRate();
+        pair.addInterest();
         return
             ERC20(asset).balanceOf(address(this)) +
             pair.toAssetAmount(pair.balanceOf(address(this)), false);
@@ -184,7 +184,7 @@ contract FraxLend is BaseTokenizedStrategy {
      * @param _amount The amount of asset to attempt to free.
      */
     function _emergencyWithdraw(uint256 _amount) internal override {
-        pair.updateExchangeRate();
+        pair.addInterest();
         uint256 shares = pair.toAssetShares(_amount, false);
         pair.redeem(shares, address(this), address(this));
     }
