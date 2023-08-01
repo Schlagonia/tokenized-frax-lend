@@ -150,12 +150,9 @@ contract FraxLend is BaseTokenizedStrategy {
      * @param . The address that is withdrawing from the strategy.
      * @return . The avialable amount that can be withdrawn in terms of `asset`
      */
-    function availableWithdrawLimit(address _owner)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function availableWithdrawLimit(
+        address _owner
+    ) public view override returns (uint256) {
         if (block.timestamp >= timeToUnlock) {
             return super.availableWithdrawLimit(_owner);
         } else {
@@ -186,6 +183,7 @@ contract FraxLend is BaseTokenizedStrategy {
      */
     function _emergencyWithdraw(uint256 _amount) internal override {
         pair.addInterest();
+        // Round up and check against actual balance
         uint256 shares = pair.toAssetShares(_amount, true);
         shares = Math.min(shares, pair.balanceOf(address(this)));
         pair.redeem(shares, address(this), address(this));

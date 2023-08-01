@@ -224,9 +224,10 @@ contract OperationTest is Setup {
         assertEq(unlocked, strategy.timeToUnlock());
     }
 
-    function test_profitableReport(uint256 _amount, uint16 _profitFactor)
-        public
-    {
+    function test_profitableReport(
+        uint256 _amount,
+        uint16 _profitFactor
+    ) public {
         vm.assume(
             _amount > strategy.depositThreshold() && _amount < maxFuzzAmount
         );
