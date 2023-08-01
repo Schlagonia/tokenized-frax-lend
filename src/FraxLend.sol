@@ -5,6 +5,7 @@ import {BaseTokenizedStrategy} from "@tokenized-strategy/BaseTokenizedStrategy.s
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {IFraxLend} from "./interfaces/IFraxLend.sol";
 
@@ -185,13 +186,14 @@ contract FraxLend is BaseTokenizedStrategy {
      */
     function _emergencyWithdraw(uint256 _amount) internal override {
         pair.addInterest();
-        uint256 shares = pair.toAssetShares(_amount, false);
+        uint256 shares = pair.toAssetShares(_amount, true);
+        shares = Math.min(shares, pair.balanceOf(address(this)));
         pair.redeem(shares, address(this), address(this));
     }
 
     // Management can update the lock rate unless it has been frozen.
     function setTimeToUnlock(uint256 _newTime) external onlyManagement {
-        require(!freezeTimeToUnlock, "Unlcok frozen");
+        require(!freezeTimeToUnlock, "lock frozen");
         timeToUnlock = _newTime;
     }
 

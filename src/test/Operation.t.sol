@@ -141,6 +141,89 @@ contract OperationTest is Setup {
         );
     }
 
+    function test_withdraw_locked(uint256 _amount) public {
+        vm.assume(
+            _amount > strategy.depositThreshold() && _amount < maxFuzzAmount
+        );
+
+        // Deposit into strategy
+        mintAndDepositIntoStrategy(strategy, user, _amount);
+
+        // thresholds been met so should be debt
+        checkStrategyTotals(strategy, _amount, _amount, 0);
+
+        vm.prank(management);
+        strategy.setTimeToUnlock(block.timestamp + 1e6);
+
+        assertEq(strategy.availableWithdrawLimit(user), 0, "limit");
+        assertEq(strategy.maxRedeem(user), 0, "redeem");
+        assertEq(strategy.maxWithdraw(user), 0, "withdraw");
+
+        vm.expectRevert("ERC4626: withdraw more than max");
+        vm.prank(user);
+        strategy.redeem(_amount, user, user);
+
+        // Skip the lockup time
+        skip(1e6 + 1);
+
+        // should now be liquid
+        assertEq(
+            strategy.availableWithdrawLimit(user),
+            type(uint256).max,
+            "limit"
+        );
+        assertEq(strategy.maxRedeem(user), _amount, "redeem");
+        assertEq(strategy.maxWithdraw(user), _amount, "withdraw");
+
+        // Report profit
+        vm.prank(keeper);
+        (uint256 profit, uint256 loss) = strategy.report();
+
+        // Check return Values
+        assertGe(profit, 1, "!profit");
+        assertEq(loss, 0, "!loss");
+
+        skip(strategy.profitMaxUnlockTime());
+
+        uint256 balanceBefore = asset.balanceOf(user);
+
+        // Withdraw all funds
+        vm.prank(user);
+        strategy.redeem(_amount, user, user);
+
+        assertGe(
+            asset.balanceOf(user),
+            balanceBefore + _amount,
+            "!final balance"
+        );
+    }
+
+    function test_setters(address _rando) public {
+        uint256 unlocked = strategy.timeToUnlock();
+        assertEq(strategy.freezeTimeToUnlock(), false);
+
+        vm.expectRevert("!Authorized");
+        vm.prank(_rando);
+        strategy.setTimeToUnlock(unlocked + 1);
+
+        vm.expectRevert("!Authorized");
+        vm.prank(_rando);
+        strategy.freezeUnlock();
+
+        vm.prank(management);
+        strategy.freezeUnlock();
+
+        assertEq(strategy.freezeTimeToUnlock(), true);
+        assertEq(unlocked, strategy.timeToUnlock());
+
+        vm.expectRevert("lock frozen");
+        vm.prank(management);
+        strategy.setTimeToUnlock(unlocked + 1);
+
+        assertEq(strategy.freezeTimeToUnlock(), true);
+        assertEq(unlocked, strategy.timeToUnlock());
+    }
+
     function test_profitableReport(uint256 _amount, uint16 _profitFactor)
         public
     {
