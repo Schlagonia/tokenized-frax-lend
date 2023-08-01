@@ -12,13 +12,18 @@ import {IFraxLend} from "./interfaces/IFraxLend.sol";
 contract FraxLend is BaseTokenizedStrategy {
     using SafeERC20 for ERC20;
 
+    // CRV/Frax pair
     IFraxLend public constant pair =
         IFraxLend(0x3835a58CA93Cdb5f912519ad366826aC9a752510);
 
+    // Amount of deposits we need before depositing
     uint256 public constant depositThreshold = 500_000e18;
+    // Bool if we have met the depositThreshold
     bool public thresholdMet;
 
+    // Timestamp of when withdraws will be enabled
     uint256 public timeToUnlock;
+    // If the timeToUnlock is still able to be set. (false == can still be set.)
     bool public freezeTimeToUnlock;
 
     constructor(
@@ -26,8 +31,9 @@ contract FraxLend is BaseTokenizedStrategy {
         string memory _name,
         uint256 _timeToUnlock
     ) BaseTokenizedStrategy(_asset, _name) {
+        // Approve the pait for FRAX
         ERC20(_asset).safeApprove(address(pair), type(uint256).max);
-
+        // Set initial time to unlock
         timeToUnlock = _timeToUnlock;
     }
 
@@ -47,12 +53,13 @@ contract FraxLend is BaseTokenizedStrategy {
      * to deposit in the yield source.
      */
     function _deployFunds(uint256 _amount) internal override {
-        // We dont deposit until the threshold is met.
+        // We don't deposit until the threshold is met.
         if (thresholdMet) {
             pair.deposit(_amount, address(this));
 
             // Amount will include all idle funds if not deposited yet.
         } else if (_amount > depositThreshold) {
+            // Set the bool for easy checks in the future.
             thresholdMet = true;
             pair.deposit(_amount, address(this));
         }
@@ -82,7 +89,7 @@ contract FraxLend is BaseTokenizedStrategy {
     function _freeFunds(uint256 _amount) internal override {
         // Only proccess withdraws if we have unlocked the stratey
         if (block.timestamp >= timeToUnlock) {
-            // Update exchance rate for conversion.
+            // Accrue interest for conversion.
             pair.addInterest();
             pair.redeem(
                 pair.toAssetShares(_amount, false),
@@ -90,6 +97,8 @@ contract FraxLend is BaseTokenizedStrategy {
                 address(this)
             );
         } else {
+            // This should never happen but we check just in case and
+            // revert so we don't record an incorrect loss.
             require(false, "Locked!");
         }
     }
@@ -124,6 +133,7 @@ contract FraxLend is BaseTokenizedStrategy {
         // Acccrue interest
         pair.addInterest();
         return
+            // Return total balance including idle.
             ERC20(asset).balanceOf(address(this)) +
             pair.toAssetAmount(pair.balanceOf(address(this)), false);
     }
@@ -153,9 +163,11 @@ contract FraxLend is BaseTokenizedStrategy {
     function availableWithdrawLimit(
         address _owner
     ) public view override returns (uint256) {
+        // If we have passed the unlock time we have no limit.
         if (block.timestamp >= timeToUnlock) {
             return super.availableWithdrawLimit(_owner);
         } else {
+            // Otherwise just the amount of idle can be withdrawn.
             return TokenizedStrategy.totalIdle();
         }
     }
@@ -189,7 +201,7 @@ contract FraxLend is BaseTokenizedStrategy {
         pair.redeem(shares, address(this), address(this));
     }
 
-    // Management can update the lock rate unless it has been frozen.
+    // Management can update the unlock time unless it has been frozen.
     function setTimeToUnlock(uint256 _newTime) external onlyManagement {
         require(!freezeTimeToUnlock, "lock frozen");
         timeToUnlock = _newTime;
