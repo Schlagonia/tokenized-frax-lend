@@ -169,7 +169,7 @@ contract OperationTest is Setup {
         // should now be liquid
         assertEq(
             strategy.availableWithdrawLimit(user),
-            type(uint256).max,
+            asset.balanceOf(0x3835a58CA93Cdb5f912519ad366826aC9a752510),
             "limit"
         );
         assertEq(strategy.maxRedeem(user), _amount, "redeem");

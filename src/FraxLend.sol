@@ -12,7 +12,7 @@ import {IFraxLend} from "./interfaces/IFraxLend.sol";
 contract FraxLend is BaseTokenizedStrategy {
     using SafeERC20 for ERC20;
 
-    // CRV/Frax pair
+    // CRV/FRAX pair
     IFraxLend public constant pair =
         IFraxLend(0x3835a58CA93Cdb5f912519ad366826aC9a752510);
 
@@ -132,7 +132,7 @@ contract FraxLend is BaseTokenizedStrategy {
     {
         // Acccrue interest
         pair.addInterest();
-        return
+        _totalAssets =
             // Return total balance including idle.
             ERC20(asset).balanceOf(address(this)) +
             pair.toAssetAmount(pair.balanceOf(address(this)), false);
@@ -165,7 +165,9 @@ contract FraxLend is BaseTokenizedStrategy {
     ) public view override returns (uint256) {
         // If we have passed the unlock time we have no limit.
         if (block.timestamp >= timeToUnlock) {
-            return super.availableWithdrawLimit(_owner);
+            return
+                TokenizedStrategy.totalIdle() +
+                ERC20(asset).balanceOf(address(pair));
         } else {
             // Otherwise just the amount of idle can be withdrawn.
             return TokenizedStrategy.totalIdle();
