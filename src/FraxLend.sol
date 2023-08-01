@@ -14,6 +14,9 @@ contract FraxLend is BaseTokenizedStrategy {
     IFraxLend public constant pair =
         IFraxLend(0x3835a58CA93Cdb5f912519ad366826aC9a752510);
 
+    uint256 public depositThreshold = 500_000e18;
+    bool public thresholdMet;
+
     uint256 public timeToUnlock;
     bool public freezeTimeToUnlock;
 
@@ -43,7 +46,15 @@ contract FraxLend is BaseTokenizedStrategy {
      * to deposit in the yield source.
      */
     function _deployFunds(uint256 _amount) internal override {
-        pair.deposit(_amount, address(this));
+        // We dont deposit until the threshold is met.
+        if (thresholdMet) {
+            pair.deposit(_amount, address(this));
+
+        // Amount will include all idle funds if not deposited yet.
+        } else if (_amount > depositThreshold) {
+            thresholdMet = true;
+            pair.deposit(_amount, address(this));
+        }
     }
 
     /**
@@ -185,7 +196,7 @@ contract FraxLend is BaseTokenizedStrategy {
     }
 
     // One way switch to freeze the unlock time.
-    function freeUnlokc() external onlyManagement {
+    function freezeUnlock() external onlyManagement {
         freezeTimeToUnlock = true;
     }
 }
